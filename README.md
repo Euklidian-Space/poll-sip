@@ -45,7 +45,7 @@ The main goal of the app is to provide the user with a polling tool to be used i
 
 ### *About the application*
 * Built with the Elixir programming language.
-* [MIT License](../blob/master/LICENSE)
+* [MIT License](https://github.com/Euklidian-Space/poll-sip/LICENSE)
 
 ### *Where to get the files*
 * [This repository](https://github.com/Euklidian-Space/poll-sip)
