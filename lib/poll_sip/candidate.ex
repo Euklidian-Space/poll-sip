@@ -3,7 +3,7 @@ defmodule PollSip.Candidate do
   defstruct [:name, :meta_data, :vote_count]
 
   @spec new(String.t(), map()) :: {:ok, %Candidate{}}
-  def new(name, meta_data \\ %{}) do
+  def new(name, meta_data \\ %{}) when is_binary(name) do
     {
       :ok,
       %Candidate{name: name, meta_data: meta_data, vote_count: 0}

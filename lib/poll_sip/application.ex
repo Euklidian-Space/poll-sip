@@ -10,6 +10,7 @@ defmodule PollSip.Application do
     children = [
       # Starts a worker by calling: PollSip.Worker.start_link(arg)
       # {PollSip.Worker, arg},
+      {Registry, keys: :unique, name: Registry.PollWorker}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
