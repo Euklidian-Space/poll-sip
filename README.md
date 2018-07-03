@@ -1,5 +1,5 @@
 # Getting Started
-See the Guide on how to contribute [here](https://github.com/Euklidian-Space/poll-sip/CONTRIBUTING.md#how-to-contribute) for instructions on how to fork and set up your repository.
+See the Guide on how to contribute [here](https://github.com/Euklidian-Space/poll-sip//blob/master/CONTRIBUTING.md#how-to-contribute) for instructions on how to fork and set up your repository.
 
 # Installing Dependencies
 In the root directory of your newly cloned project `mix deps.get`
