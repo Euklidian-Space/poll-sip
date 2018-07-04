@@ -7,28 +7,33 @@ defmodule PollWorkerTest do
     candidates = generateCandidates(5) |> randomize_vote_count
     name = Faker.Lorem.sentence()
     {:ok, pw} = PollWorker.start_link(name, candidates)
+
+    on_exit fn -> 
+      Process.exit(pw, :shutdown)
+    end
+
     {:ok, candidates: candidates, poll_name: name, poll_worker: pw}
   end
 
   describe "start_link/2" do 
     test "should return {:ok, pid}", 
-    %{candidates: candidates, poll_name: name}
+    %{candidates: candidates}
     do 
-      assert {:ok, poll_worker} = PollWorker.start_link(name, candidates)
+      assert {:ok, poll_worker} = PollWorker.start_link("test_1", candidates)
       assert is_pid(poll_worker)
     end 
 
     test "should initialize state as a PollWorker struct",
-    %{candidates: candidates, poll_name: name}
+    %{candidates: candidates}
     do 
-      {:ok, poll_worker} = PollWorker.start_link(name, candidates)
+      {:ok, poll_worker} = PollWorker.start_link("test_2", candidates)
       assert %PollWorker{} = :sys.get_state(poll_worker)
     end 
 
     test "PollWorker struct should contain a Poll struct and Rules struct", 
-    %{candidates: candidates, poll_name: name}
+    %{candidates: candidates}
     do 
-      {:ok, poll_worker} = PollWorker.start_link(name, candidates)
+      {:ok, poll_worker} = PollWorker.start_link("test_3", candidates)
 
       assert %PollWorker{poll: %Poll{} = poll, rules: %Rules{} = rules}
         = :sys.get_state(poll_worker)
@@ -39,12 +44,12 @@ defmodule PollWorkerTest do
       expected_candidates = Enum.sort_by(candidates, fn c -> c.vote_count end, &>=/2)
 
       assert received_candidates == expected_candidates
-      assert received_poll_name == name 
+      assert received_poll_name == "test_3"
       assert rules_state == :initialized
     end 
 
     test "should return {:error, 'reason'} if candidate names are not unique",
-    %{candidates: [candA, candB | rest], poll_name: name}
+    %{candidates: [candA, candB | rest]}
     do 
        
       candidates = 
@@ -52,14 +57,14 @@ defmodule PollWorkerTest do
       expected_msg = "candidate names must be unique"
 
       assert {:error, ^expected_msg} 
-        = PollWorker.start_link(name, candidates)
+        = PollWorker.start_link("test_4", candidates)
     end 
 
     test "should start a named process",
-    %{candidates: candidates, poll_name: name}
+    %{candidates: candidates}
     do 
-      {:ok, poll_worker} = PollWorker.start_link(name, candidates)  
-      PollWorker.via_tuple(name)
+      {:ok, _poll_worker} = PollWorker.start_link("test_5", candidates)  
+      PollWorker.via_tuple("test_5")
       |> GenServer.whereis 
       |> assert
     end 
