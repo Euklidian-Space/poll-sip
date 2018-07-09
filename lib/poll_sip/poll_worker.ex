@@ -4,11 +4,6 @@ defmodule PollSip.PollWorker do
   defstruct [:poll, :rules]
 
   ##Public API
-  @spec start_link(String.t(), [%Candidate{}])
-    :: {:ok, pid()}
-
-  def start_link(name, candidates) when is_binary(name), 
-  do: GenServer.start_link(__MODULE__, %{name: name, candidates: candidates}, name: via_tuple(name))
 
   @spec start_poll(pid())
     :: :ok | {:error, String.t(), %Rules{}}
@@ -30,7 +25,12 @@ defmodule PollSip.PollWorker do
 
   def via_tuple(name) when is_binary(name),
   do: {:via, Registry, {Registry.PollWorker, name}}
+  
   ##GenServer Callbacks
+  
+  def start_link(name: name, candidates: candidates) when is_binary(name),
+  do: GenServer.start_link(__MODULE__, %{name: name, candidates: candidates}, name: via_tuple(name))
+
   def init(%{name: name, candidates: candidates}) do 
     case Poll.new(name, candidates) do 
       {:ok, poll} -> {:ok, %PollWorker{poll: poll, rules: %Rules{}}} 

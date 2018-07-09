@@ -16,12 +16,17 @@ defmodule PollSip.TestHelpers do
     end)
   end 
 
+  def sort_desc(candidates) do 
+    Enum.sort_by(candidates, fn c -> c.vote_count end, &>=/2)
+  end 
+
   defp generateCandidate do
     meta_data = %{
       "address" => Faker.Address.street_address(),
       "id" => Faker.Code.isbn()
     }
-    Candidate.new(Faker.String.base64(), meta_data)
-    |> (fn {:ok, cand} -> cand end).()
+    {:ok, cand} = Candidate.new(Faker.String.base64(), meta_data)
+
+    cand
   end
 end
