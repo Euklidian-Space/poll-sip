@@ -68,6 +68,38 @@ defmodule PollWorkerTest do
       |> GenServer.whereis 
       |> assert
     end 
+
+    test "should update the :poll_workers ets table",
+    %{candidates: candidates}
+    do 
+      name = "ets test"
+      {:ok, pw} = 
+        PollWorker.start_link(name: name, candidates: candidates)  
+
+      %PollWorker{poll: expected_poll} = :sys.get_state(pw)
+      expected_name = expected_poll.name
+
+      assert [{^expected_name, %PollWorker{poll: received_poll}}] = 
+        :ets.lookup(:poll_workers, name)
+
+      assert expected_poll == received_poll
+    end 
+
+    test "should initialize state with state in ets table if it exists",
+    %{candidates: candidates}
+    do 
+      name = "poll worker 1"
+      modified_candidates = candidates 
+        |> randomize_vote_count 
+        |> sort_desc
+      pw = create_pollworker(name, modified_candidates)
+      :ets.insert(:poll_workers, {name, pw})
+
+      {:ok, pid} = 
+        PollWorker.start_link(name: name, candidates: candidates)
+
+      assert pw == :sys.get_state(pid)
+    end 
   end 
 
   describe "start_poll/1" do 
@@ -141,6 +173,25 @@ defmodule PollWorkerTest do
       assert {:error, "invalid rules state", %Rules{}}
         = PollWorker.award_votes(pw, "some name", 4)
     end 
+
+    test "should update ets table with new state",
+    %{poll_worker: pw, candidates: [candidate | _], poll_name: poll_name}
+    do 
+      [{poll_name, poll_worker}] = :ets.lookup(:poll_workers, poll_name)
+
+      %Candidate{vote_count: votes} 
+        = find_candidate(poll_worker.poll, candidate.name)
+
+      expected_vote_count = votes + 4
+
+      :ok = PollWorker.award_votes(pw, candidate.name, 4)
+
+      [{_, updated_poll_worker}] = :ets.lookup(:poll_workers, poll_name)
+
+      assert %Candidate{vote_count: ^expected_vote_count}
+        = find_candidate(updated_poll_worker.poll, candidate.name)
+      
+    end 
   end 
 
   describe "via_tuple/0" do 
@@ -152,6 +203,21 @@ defmodule PollWorkerTest do
     end 
   end 
 
+  describe "find_candidate/2" do 
+
+    test "should find candidate by given name",
+    %{candidates: [cand | _], poll_worker: pw}
+    do 
+      assert {:ok, ^cand} = PollWorker.find_candidate(pw, cand.name)      
+    end 
+
+    test "should return error tuple for name not found",
+    %{poll_worker: pw}
+    do 
+      invalid_name = "some name not found"
+      assert {:name_not_found, ^invalid_name} = PollWorker.find_candidate(pw, invalid_name)
+    end
+  end 
 end 
 
 

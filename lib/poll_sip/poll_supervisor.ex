@@ -7,8 +7,10 @@ defmodule PollSip.PollSupervisor do
   def start_poll_worker(name: name, candidates: candidates), 
   do: Supervisor.start_child(__MODULE__, [[name: name, candidates: candidates]])
 
-  def stop_poll_worker(name), 
-  do: Supervisor.terminate_child(__MODULE__, pid_from_name(name))
+  def stop_poll_worker(name) do
+    :ets.delete(:poll_workers, name)
+    Supervisor.terminate_child(__MODULE__, pid_from_name(name))
+  end 
 
   #Supervisor Callbacks 
   

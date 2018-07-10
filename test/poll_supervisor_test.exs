@@ -1,6 +1,6 @@
 defmodule PollSupervisorTest do 
   use ExUnit.Case, async: true
-  alias PollSip.{PollSupervisor, PollWorker, Poll, Rules, Candidate}
+  alias PollSip.{PollSupervisor, PollWorker}
   import PollSip.TestHelpers
 
   setup do 
@@ -27,13 +27,36 @@ defmodule PollSupervisorTest do
   end 
 
   describe "stop_poll_worker/1" do 
+    setup %{name: name, candidates: candidates} do 
+      {:ok, poll_worker} 
+        = PollSupervisor.start_poll_worker(name: name, candidates: candidates)
+      {:ok, poll_worker: poll_worker}
+    end 
+
     test "should end a poll worker with given name",
-    %{name: name, candidates: candidates}
+    %{name: name, poll_worker: pw}
     do 
-      opts = [name: name, candidates: candidates]
-      {:ok, child} = PollSupervisor.start_poll_worker(opts)
       assert :ok = PollSupervisor.stop_poll_worker(name)
-      refute Process.alive?(child)
+      refute Process.alive?(pw)
+    end 
+
+    test "should delete entry in poll_workers ets table",
+    %{name: name}
+    do 
+      :ok = PollSupervisor.stop_poll_worker(name)
+      assert [] = :ets.lookup(:poll_workers, name)
     end 
   end 
 end 
+
+
+
+
+
+
+
+
+
+
+
+

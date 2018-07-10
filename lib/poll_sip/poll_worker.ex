@@ -23,6 +23,12 @@ defmodule PollSip.PollWorker do
   def award_votes(poll_worker, candidate_name, votes) when votes > 0,
   do: GenServer.call(poll_worker, {:vote, candidate_name, votes})
 
+  @spec find_candidate(pid(), String.t())
+    :: {:ok, %Candidate{}}
+
+  def find_candidate(poll_worker, name) when is_pid(poll_worker) and is_binary(name),
+  do: GenServer.call(poll_worker, {:find_candidate, name})
+
   def via_tuple(name) when is_binary(name),
   do: {:via, Registry, {Registry.PollWorker, name}}
   
@@ -32,11 +38,8 @@ defmodule PollSip.PollWorker do
   do: GenServer.start_link(__MODULE__, %{name: name, candidates: candidates}, name: via_tuple(name))
 
   def init(%{name: name, candidates: candidates}) do 
-    case Poll.new(name, candidates) do 
-      {:ok, poll} -> {:ok, %PollWorker{poll: poll, rules: %Rules{}}} 
-
-      {:error, reason} -> {:stop, reason}
-    end 
+    send self(), {:set_state, name, candidates}
+    fresh_state(name, candidates)
   end 
 
   def handle_call(
@@ -80,9 +83,40 @@ defmodule PollSip.PollWorker do
     with {:success, new_rules} <- chk_rules(rules, :award_votes),
          {:ok, updated_poll} <- Poll.award_votes(poll, candidate_name, votes)
     do
-      reply_success(%PollWorker{poll: updated_poll, rules: new_rules}, :ok)
+      new_state = %PollWorker{poll: updated_poll, rules: new_rules}
+      :ets.insert(:poll_workers, {poll.name, new_state})
+      reply_success(new_state, :ok)
     else
       err -> reply_error(state_data, err)
+    end 
+  end 
+
+  def handle_call(
+    {:find_candidate, name},
+    _from,
+    %PollWorker{poll: poll} = state_data
+  )
+  do
+    func = fn cand -> cand.name == name end
+    case Enum.find(poll.candidates, func) do 
+      nil -> reply_error(state_data, {:name_not_found, name})
+
+      cand -> reply_success(state_data, {:ok, cand})
+    end 
+  end 
+
+  def handle_info({:set_state, name, candidates}, _state_data) do 
+    with [] <- :ets.lookup(:poll_workers, name),
+         {:ok, state_data} <- fresh_state(name, candidates)
+    do 
+      :ets.insert(:poll_workers, {name, state_data})
+      {:noreply, state_data}
+    else 
+      [{^name, data}] ->
+        {:noreply, data}
+
+      {:stop, _} = stop_tuple -> 
+        stop_tuple
     end 
   end 
 
@@ -102,5 +136,13 @@ defmodule PollSip.PollWorker do
         {:success, new_rules}
     end 
   end
+
+  defp fresh_state(name, candidates) do 
+    case Poll.new(name, candidates) do 
+      {:ok, poll} -> {:ok, %PollWorker{poll: poll, rules: %Rules{}}} 
+
+      {:error, reason} -> {:stop, reason}
+    end 
+  end 
 
 end 

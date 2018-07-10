@@ -1,5 +1,5 @@
 defmodule PollSip.TestHelpers do
-  alias PollSip.Candidate
+  alias PollSip.{Candidate, Poll, PollWorker, Rules}
 
   def generateCandidates(1), do: generateCandidate()
   def generateCandidates(count) when count > 1 do
@@ -18,6 +18,17 @@ defmodule PollSip.TestHelpers do
 
   def sort_desc(candidates) do 
     Enum.sort_by(candidates, fn c -> c.vote_count end, &>=/2)
+  end 
+
+  def create_pollworker(name, candidates) do 
+    poll = Poll.new(name, candidates)
+    %PollWorker{poll: poll, rules: %Rules{}}
+  end 
+
+  def find_candidate(poll, candidate_name) do 
+    Enum.find(poll.candidates, fn cand -> 
+      cand.name == candidate_name 
+    end)
   end 
 
   defp generateCandidate do
