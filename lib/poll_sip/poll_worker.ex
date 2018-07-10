@@ -24,7 +24,7 @@ defmodule PollSip.PollWorker do
   do: GenServer.call(poll_worker, {:vote, candidate_name, votes})
 
   @spec find_candidate(pid(), String.t())
-    :: {:ok, %Candidate{}}
+    :: {:ok, %Candidate{}} | {:name_not_found, String.t()}
 
   def find_candidate(poll_worker, name) when is_pid(poll_worker) and is_binary(name),
   do: GenServer.call(poll_worker, {:find_candidate, name})
