@@ -1,4 +1,5 @@
 defmodule PollSip.PollWorker do 
+  @moduledoc false
   use GenServer, start: {__MODULE__, :start_link, []}, restart: :transient
   alias PollSip.{PollWorker, Poll, Rules, Candidate}
   defstruct [:poll, :rules]
@@ -34,12 +35,21 @@ defmodule PollSip.PollWorker do
   
   ##GenServer Callbacks
   
-  def start_link(name: name, candidates: candidates) when is_binary(name),
-  do: GenServer.start_link(__MODULE__, %{name: name, candidates: candidates}, name: via_tuple(name))
+  def start_link(name: name, candidates: candidates) when is_binary(name) do 
+    GenServer.start_link(
+      __MODULE__, 
+      %{name: name, candidates: candidates}, 
+      name: via_tuple(name)
+    )
+  end 
 
   def init(%{name: name, candidates: candidates}) do 
-    send self(), {:set_state, name, candidates}
-    fresh_state(name, candidates)
+    if String.length(name) < 8 do 
+      {:stop, "poll name must be atleast 8 characters"}
+    else 
+      send self(), {:set_state, name, candidates}
+      fresh_state(name, candidates)
+    end 
   end 
 
   def handle_call(

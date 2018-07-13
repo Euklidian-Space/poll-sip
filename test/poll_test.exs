@@ -77,6 +77,14 @@ defmodule PollTest do
 
       assert received_candidates == expected_candidate_order
     end 
+
+    test "should return {:error, 'candidate name john12345 not found'}",
+    %{poll: poll} 
+    do 
+      name = "john12345"
+      assert {:error, "candidate name 'john12345' not found"} = 
+        Poll.award_votes(poll, name, 3)
+    end 
   end 
 
 

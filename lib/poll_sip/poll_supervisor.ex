@@ -1,4 +1,5 @@
 defmodule PollSip.PollSupervisor do 
+  @moduledoc false
   use Supervisor  
   alias PollSip.PollWorker
 

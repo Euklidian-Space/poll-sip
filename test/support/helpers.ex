@@ -31,12 +31,18 @@ defmodule PollSip.TestHelpers do
     end)
   end 
 
-  defp generateCandidate do
+  def generate_name_and_data() do 
     meta_data = %{
       "address" => Faker.Address.street_address(),
       "id" => Faker.Code.isbn()
     }
-    {:ok, cand} = Candidate.new(Faker.String.base64(), meta_data)
+    
+    [Faker.String.base64(), meta_data]
+  end 
+
+  defp generateCandidate do
+    [name, data] = generate_name_and_data()
+    {:ok, cand} = Candidate.new(name, data)
 
     cand
   end

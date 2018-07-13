@@ -46,6 +46,7 @@ defmodule PollSupervisorTest do
       :ok = PollSupervisor.stop_poll_worker(name)
       assert [] = :ets.lookup(:poll_workers, name)
     end 
+
   end 
 end 
 
