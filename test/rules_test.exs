@@ -68,6 +68,42 @@ defmodule RulesTest do
         = Rules.check(invalid_rules_state, :award_votes)
     end 
   end 
+
+  describe "check/2 :pause" do 
+    setup do 
+      {:ok, active_state: %Rules{state: :polling_active}}
+    end 
+
+    test "should change state to :polling_paused",
+    %{active_state: rules}
+    do 
+      assert %Rules{state: :polling_paused} =
+        Rules.check(rules, :pause)
+    end 
+
+    test "should return :error if state was not :polling_active" do 
+      assert :error =
+        Rules.check(%Rules{state: :wrong_state}, :pause)
+    end 
+  end 
+
+  describe "check/2 :resume" do 
+    setup do 
+      {:ok, active_state: %Rules{state: :polling_paused}}
+    end 
+
+    test "should change state to :polling_active",
+    %{active_state: rules} 
+    do 
+      assert %Rules{state: :polling_active} =
+        Rules.check(rules, :resume)
+    end 
+
+    test "shoult return :error if state was not :polling_paused" do 
+      assert :error =
+        Rules.check(%Rules{state: :wrong_state}, :resume)
+    end 
+  end 
 end 
 
 
