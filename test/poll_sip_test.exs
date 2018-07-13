@@ -136,6 +136,67 @@ defmodule PollSipTest do
         PollSip.end_poll("john")
     end 
   end 
+
+  describe "pause_polling/1" do 
+    setup %{candidates: candidates, poll_name: name} do 
+      :ok = PollSip.create_poll(name, candidates)
+      :ok = PollSip.start_poll(name)
+    end 
+
+    test "should return :ok",
+    %{poll_name: name} 
+    do 
+      assert :ok = PollSip.pause_polling(name)
+    end 
+
+    test "should pause poll",
+    %{poll_name: name}
+    do 
+      expected_rules_state = :polling_paused
+      :ok = PollSip.pause_polling(name)
+
+      %PollWorker{rules: received_rules} = 
+        PollWorker.via_tuple(name) |> GenServer.whereis |> :sys.get_state
+
+      assert received_rules.state == expected_rules_state
+    end 
+
+    test "should return {:error, 'poll name 'john' not found}" do 
+      assert {:error, "poll name 'john' not found"} =
+        PollSip.pause_polling("john")
+    end 
+  end 
+
+  describe "resume_polling/1" do 
+    setup %{candidates: candidates, poll_name: name} do 
+      :ok = PollSip.create_poll(name, candidates)
+      :ok = PollSip.start_poll(name)
+      :ok = PollSip.pause_polling(name)
+    end 
+
+    test "should return :ok",
+    %{poll_name: name}
+    do 
+      assert :ok = PollSip.resume_polling(name)
+    end 
+
+    test "should resume poll",
+    %{poll_name: name}
+    do 
+      expected_rules_state = :polling_active
+      :ok = PollSip.resume_polling(name)
+
+      %PollWorker{rules: received_rules} = 
+        PollWorker.via_tuple(name) |> GenServer.whereis |> :sys.get_state
+
+      assert received_rules.state == expected_rules_state
+    end 
+
+    test "should return {:error, 'poll name 'john' not found}" do 
+      assert {:error, "poll name 'john' not found"} =
+        PollSip.resume_polling("john")
+    end 
+  end 
 end 
 
 

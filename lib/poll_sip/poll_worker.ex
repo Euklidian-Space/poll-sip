@@ -30,6 +30,18 @@ defmodule PollSip.PollWorker do
   def find_candidate(poll_worker, name) when is_pid(poll_worker) and is_binary(name),
   do: GenServer.call(poll_worker, {:find_candidate, name})
 
+  @spec pause_polling(pid())
+    :: :ok | {:error, String.t(), %Rules{}}
+
+  def pause_polling(poll_worker), 
+  do: GenServer.call(poll_worker, :pause_polling)
+
+  @spec resume_polling(pid()) 
+    :: :ok 
+
+  def resume_polling(poll_worker),
+  do: GenServer.cast(poll_worker, :resume_polling)
+
   def via_tuple(name) when is_binary(name),
   do: {:via, Registry, {Registry.PollWorker, name}}
   
@@ -65,6 +77,8 @@ defmodule PollSip.PollWorker do
       {:success, new_rules} ->
         new_state = %PollWorker{state_data | rules: new_rules}
         reply_success(new_state, :ok)
+
+      :poll_temp_offline -> reply_error(state_data, :poll_temp_offline)
     end 
   end 
 
@@ -81,6 +95,8 @@ defmodule PollSip.PollWorker do
       {:success, new_rules} -> 
         new_state = %PollWorker{state_data | rules: new_rules}
         reply_success(new_state, {:ok, new_state})
+
+      :poll_temp_offline -> reply_error(state_data, :poll_temp_offline)
     end 
   end 
 
@@ -115,6 +131,33 @@ defmodule PollSip.PollWorker do
     end 
   end 
 
+  def handle_call(
+    :pause_polling,
+    _from,
+    %PollWorker{rules: rules} = state_data
+  )
+  do
+    case chk_rules(rules, :pause) do 
+      {:error, _, _} = err ->
+        reply_error(state_data, err)
+      
+      {:success, new_rules} ->
+        reply_success(%PollWorker{state_data | rules: new_rules}, :ok)
+
+      :poll_temp_offline -> reply_error(state_data, :poll_temp_offline)
+    end 
+  end 
+
+  def handle_cast(:resume_polling, %PollWorker{rules: rules} = state_data) do 
+    case chk_rules(rules, :resume) do 
+      {:error, _, _} -> 
+        {:noreply, state_data}  
+
+      {:success, new_rules} -> 
+        {:noreply, %PollWorker{state_data | rules: new_rules}}
+    end 
+  end 
+
   def handle_info({:set_state, name, candidates}, _state_data) do 
     with [] <- :ets.lookup(:poll_workers, name),
          {:ok, state_data} <- fresh_state(name, candidates)
@@ -137,6 +180,12 @@ defmodule PollSip.PollWorker do
   defp reply_error(state_data, err),
   do: {:reply, err, state_data} 
 
+  defp chk_rules(%Rules{state: :polling_paused} = rules, :resume),
+  do: {:success, Rules.check(rules, :resume)}
+
+  defp chk_rules(%Rules{state: :polling_paused}, _message),
+  do: :poll_temp_offline
+  
   defp chk_rules(rules, message) do 
     case Rules.check(rules, message) do 
       :error -> 

@@ -231,6 +231,86 @@ defmodule PollWorkerTest do
         PollWorker.find_candidate(pw, invalid_name)
     end
   end 
+
+  describe "pause_polling/1" do 
+    setup %{poll_worker: pw} do 
+      PollWorker.start_poll(pw)  
+    end 
+
+    test "should return :ok",
+    %{poll_worker: pw} 
+    do 
+      assert :ok = PollWorker.pause_polling(pw)
+    end 
+
+    test "should pause poll taking",
+    %{poll_worker: pw}
+    do 
+      :ok = PollWorker.pause_polling(pw)
+      expected_rules_state = :polling_paused
+
+      assert %PollWorker{rules: received_rules} = 
+        :sys.get_state(pw)
+      
+      assert received_rules.state == expected_rules_state
+    end 
+
+    test "should return error tuple",
+    %{poll_worker: pw}
+    do 
+      {:ok, _} = PollWorker.end_poll(pw)  
+
+      assert {:error, "invalid rules state", %Rules{}} = 
+        PollWorker.pause_polling(pw)
+    end 
+  end 
+
+  describe "resume_polling/1" do 
+    setup %{poll_worker: pw} do 
+      PollWorker.start_poll(pw)
+      PollWorker.pause_polling(pw)
+    end 
+
+    test "should return :ok",
+    %{poll_worker: pw}
+    do 
+      assert :ok = PollWorker.resume_polling(pw)
+    end 
+
+    test "should resume polling",
+    %{poll_worker: pw} 
+    do 
+      :ok = PollWorker.resume_polling(pw)
+
+      assert %PollWorker{rules: received_rules} =
+        :sys.get_state(pw)
+
+      assert received_rules.state == :polling_active
+    end 
+  end 
+  
+  describe "requests while pollworker is paused" do 
+    setup %{poll_worker: pw} do 
+      PollWorker.start_poll(pw)
+      PollWorker.pause_polling(pw)
+    end 
+
+    test "should return :poll_temp_closed",
+    %{poll_worker: pw, candidates: [cand | _]} 
+    do 
+      assert :poll_temp_offline = 
+        PollWorker.award_votes(pw, cand.name, 1)
+
+      assert :poll_temp_offline =
+        PollWorker.pause_polling(pw)
+
+      assert :poll_temp_offline = 
+        PollWorker.end_poll(pw)
+
+      assert :poll_temp_offline =
+        PollWorker.start_poll(pw)
+    end 
+  end 
 end 
 
 
